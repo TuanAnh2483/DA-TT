@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model companies {
+  company_id    Int      @id @default(autoincrement())
+  company_name  String   @db.VarChar(100)
+  contact_name  String?  @db.VarChar(100)
+  contact_email String?  @db.VarChar(100)
+  address       String?  @db.VarChar(255)
+  phone         String?  @db.VarChar(15)
+  industry_type String?  @db.VarChar(50)
+  orders        orders[]
+}
+
+model inventory {
+  inventory_id      Int       @id @default(autoincrement())
+  product_id        Int?
+  date_modified     DateTime  @default(now()) @db.DateTime(0)
+  quantity_change   Int
+  reason_for_change String?   @db.VarChar(255)
+  products          products? @relation(fields: [product_id], references: [product_id], onUpdate: NoAction, map: "fk_inventory_product_id")
+
+  @@index([product_id], map: "fk_inventory_product_id")
+}
+
+model order_details {
+  order_detail_id Int       @id @default(autoincrement())
+  order_id        Int?
+  product_id      Int?
+  quantity        Int
+  price           Int
+  products        products? @relation(fields: [product_id], references: [product_id], onUpdate: NoAction, map: "fk_product_id")
+  orders          orders?   @relation(fields: [order_id], references: [order_id], onDelete: Cascade, onUpdate: NoAction, map: "order_details_ibfk_1")
+
+  @@index([product_id], map: "fk_product_id")
+  @@index([order_id], map: "order_id")
+}
+
+model orders {
+  order_id         Int                @id @default(autoincrement())
+  user_id          Int
+  company_id       Int?
+  order_date       DateTime           @default(now()) @db.DateTime(0)
+  status           orders_status
+  total_amount     Int
+  order_details    order_details[]
+  companies        companies?         @relation(fields: [company_id], references: [company_id], onUpdate: NoAction, map: "fk_company_id")
+  users            users              @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "orders_ibfk_1")
+  payment_details  payment_details[]
+  shipping_details shipping_details[]
+
+  @@index([company_id], map: "fk_company_id")
+  @@index([user_id], map: "user_id")
+}
+
+model payment_details {
+  payment_id     Int      @id @default(autoincrement())
+  order_id       Int?
+  payment_date   DateTime @default(now()) @db.DateTime(0)
+  amount         Int
+  payment_method String   @db.VarChar(255)
+  payment_status String   @db.VarChar(255)
+  orders         orders?  @relation(fields: [order_id], references: [order_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_payment_order_id")
+
+  @@index([order_id], map: "fk_payment_order_id")
+}
+
+model product_categories {
+  category_id   Int        @id @default(autoincrement())
+  category_name String     @db.VarChar(100)
+  description   String?    @db.Text
+  products      products[]
+}
+
+model products {
+  product_id         Int                 @id @default(autoincrement())
+  product_name       String              @db.VarChar(100)
+  product_picture    String?             @db.VarChar(100)
+  description        String?             @db.Text
+  price              Int
+  quantity_in_stock  Int
+  category_id        Int?
+  supplier_id        Int?
+  is_visible         Boolean             @default(true)
+  hinh_anh           String?             @db.VarChar(255)
+  inventory          inventory[]
+  order_details      order_details[]
+  suppliers          suppliers?          @relation(fields: [supplier_id], references: [supplier_id], onUpdate: NoAction, map: "fk_supplier_id")
+  product_categories product_categories? @relation(fields: [category_id], references: [category_id], onUpdate: NoAction, map: "products_ibfk_1")
+  reviews            reviews[]
+
+  @@index([category_id], map: "category_id")
+  @@index([supplier_id], map: "fk_supplier_id")
+}
+
+model reviews {
+  review_id   Int       @id @default(autoincrement())
+  product_id  Int?
+  user_id     Int?
+  rating      Int
+  comment     String?   @db.Text
+  review_date DateTime  @default(now()) @db.DateTime(0)
+  products    products? @relation(fields: [product_id], references: [product_id], onUpdate: NoAction, map: "fk_review_product_id")
+  users       users?    @relation(fields: [user_id], references: [user_id], onUpdate: NoAction, map: "fk_review_user_id")
+
+  @@index([product_id], map: "fk_review_product_id")
+  @@index([user_id], map: "fk_review_user_id")
+}
+
+model shipping_details {
+  shipping_id             Int       @id @default(autoincrement())
+  order_id                Int?
+  shipping_address        String    @db.VarChar(255)
+  estimated_delivery_date DateTime? @db.DateTime(0)
+  actual_delivery_date    DateTime? @db.DateTime(0)
+  orders                  orders?   @relation(fields: [order_id], references: [order_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_shipping_order_id")
+
+  @@index([order_id], map: "fk_shipping_order_id")
+}
+
+model suppliers {
+  supplier_id   Int        @id @default(autoincrement())
+  supplier_name String     @db.VarChar(100)
+  contact_name  String?    @db.VarChar(100)
+  contact_email String?    @db.VarChar(100)
+  address       String?    @db.VarChar(255)
+  phone         String?    @db.VarChar(15)
+  products      products[]
+}
+
+model users {
+  user_id         Int        @id @default(autoincrement())
+  password        String     @db.VarChar(255)
+  full_name       String     @db.VarChar(100)
+  email           String     @unique(map: "email") @db.VarChar(100)
+  phone           String?    @db.VarChar(15)
+  role            users_role
+  creation_date   DateTime   @default(now()) @db.DateTime(0)
+  last_login_date DateTime?  @db.DateTime(0)
+  avatar          String?    @db.VarChar(255)
+  is_visible      Boolean?   @default(true)
+  orders          orders[]
+  reviews         reviews[]
+}
+
+enum users_role {
+  admin
+  customer
+}
+
+enum orders_status {
+  pending
+  shipped
+  delivered
+  Cancel
+}
